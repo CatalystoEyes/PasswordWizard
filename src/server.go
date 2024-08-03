@@ -1,24 +1,41 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
 	"html/template"
-	"math/rand"
+	"math/big"
 	"net/http"
-	"time"
+	"runtime"
+	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 )
-
-var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+ 
+var (
+    tmpl     *template.Template
+    tmplOnce sync.Once
+)
 
 func generateRandomPassword(length int) string {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    var password []byte
-    for i := 0; i < length; i++ {
-        password = append(password, charset[rng.Intn(len(charset))])
+    result := make([]byte, length)
+    for i := range result {
+        num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+        if err != nil {
+            panic(err)
+        }
+        result[i] = charset[num.Int64()]
     }
-    return string(password)
+    return string(result)
+}
+
+func initTemplates() {
+    var err error
+    tmpl, err = template.ParseFiles("index.html")
+    if err != nil {
+        panic("Error loading template: " + err.Error())
+    }
 }
 
 type PageVariables struct {
@@ -28,7 +45,9 @@ type PageVariables struct {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    password := generateRandomPassword(12) 
+    tmplOnce.Do(initTemplates)
+    
+    password := generateRandomPassword(14)
 
     hash, err := HashPassword(password)
     if err != nil {
@@ -37,12 +56,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
     }
 
     match := CheckPasswordHash(password, hash)
-
-    tmpl, err := template.ParseFiles("index.html")
-    if err != nil {
-        http.Error(w, "Error loading template: "+err.Error(), http.StatusInternalServerError)
-        return
-    }
 
     data := PageVariables{
         Password: password,
@@ -56,7 +69,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func HashPassword(password string) (string, error) {
-    bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+    bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
     return string(bytes), err
 }
 
@@ -66,11 +79,14 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func main() {
+    runtime.GOMAXPROCS(runtime.NumCPU())
+
     port := ":8080"
 
     http.HandleFunc("/", handler)
 
     fmt.Println("The server was started on http://localhost:8080")
-
-    http.ListenAndServe(port, nil)
+    if err := http.ListenAndServe(port, nil); err != nil {
+        fmt.Println("Failed to start the server:", err)
+    }
 }

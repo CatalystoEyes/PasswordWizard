@@ -2,20 +2,32 @@ package main
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"math/big"
 	"net/http"
+	"path/filepath"
 	"runtime"
 	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 )
- 
+
 var (
     tmpl     *template.Template
     tmplOnce sync.Once
 )
+
+type Request struct {
+    Length int `json:"length"`
+}
+
+type PageVariables struct {
+    Password string
+    Hash     string
+    Match    bool
+}
 
 func generateRandomPassword(length int) string {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -32,39 +44,53 @@ func generateRandomPassword(length int) string {
 
 func initTemplates() {
     var err error
-    tmpl, err = template.ParseFiles("index.html")
+    tmpl, err = template.ParseFiles(filepath.Join("../frontend", "index.html"))
     if err != nil {
         panic("Error loading template: " + err.Error())
     }
 }
 
-type PageVariables struct {
-    Password string
-    Hash     string
-    Match    bool
-}
-
 func handler(w http.ResponseWriter, r *http.Request) {
-    tmplOnce.Do(initTemplates)
-    
-    password := generateRandomPassword(14)
+    w.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+    w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+    w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-    hash, err := HashPassword(password)
-    if err != nil {
-        http.Error(w, "Error hashing password", http.StatusInternalServerError)
+    if r.Method == http.MethodOptions {
+        w.WriteHeader(http.StatusOK)
         return
     }
 
-    match := CheckPasswordHash(password, hash)
+    if r.Method == http.MethodPost {
+        var req Request
+        err := json.NewDecoder(r.Body).Decode(&req)
+        if err != nil {
+            http.Error(w, "Error decoding request", http.StatusBadRequest)
+            return
+        }
 
-    data := PageVariables{
-        Password: password,
-        Hash:     hash,
-        Match:    match,
-    }
+        tmplOnce.Do(initTemplates)
 
-    if err := tmpl.Execute(w, data); err != nil {
-        http.Error(w, "Error executing template: "+err.Error(), http.StatusInternalServerError)
+        password := generateRandomPassword(req.Length)
+        hash, err := HashPassword(password)
+        if err != nil {
+            http.Error(w, "Error hashing password", http.StatusInternalServerError)
+            return
+        }
+
+        match := CheckPasswordHash(password, hash)
+
+        data := PageVariables{
+            Password: password,
+            Hash:     hash,
+            Match:    match,
+        }
+
+        w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(data)
+    } else {
+        tmplOnce.Do(initTemplates)
+
+        http.FileServer(http.Dir("../frontend")).ServeHTTP(w, r)
     }
 }
 

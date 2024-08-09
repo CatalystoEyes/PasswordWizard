@@ -30,7 +30,7 @@ type PageVariables struct {
 }
 
 func generateRandomPassword(length int) string {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
     result := make([]byte, length)
     for i := range result {
         num, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))

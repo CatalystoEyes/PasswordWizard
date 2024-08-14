@@ -1,15 +1,17 @@
-FROM golang:1.22 AS builder
+FROM node:18 AS builder
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY package*.json ./
+
+RUN npm install
 
 COPY ./backend /app/backend
+COPY ./frontend /app/frontend
 
 WORKDIR /app/backend
 
-RUN go build -o /app/main .
+RUN npm run build
 
 FROM alpine:latest
 
@@ -17,8 +19,8 @@ RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
-COPY --from=builder /app/main .
+COPY --from=builder /app/backend .
 
-CMD ["./main"]
+CMD ["node", "main.js"]
 
 EXPOSE 8080

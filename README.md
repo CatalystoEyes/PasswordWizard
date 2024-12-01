@@ -1,6 +1,6 @@
 # PasswordWizard
 
-Welcome to the PasswordWizard application! This service, built with Express and Vue, generates random passwords using bcrypt to enhance security.
+Welcome to the PasswordWizard application! This service, built with Golang and Vue, generates random passwords using bcrypt to enhance security.
 
 ## Overview
 
@@ -22,6 +22,7 @@ Make sure you have the following installed:
 
 - [Node.js](https://nodejs.org/) (recommended version 14 or higher)
 - [Vue CLI](https://cli.vuejs.org/)
+- [Golang]
 
 ### Steps to Install
 
@@ -46,7 +47,3 @@ Make sure you have the following installed:
 ```bash
 docker run -p 8080:8080 PasswordWizard
 ```
-
-### Finish!
-
-Now you can access the PasswordWizard application at http://localhost:8080 in your web browser!

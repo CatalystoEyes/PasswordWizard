@@ -22,7 +22,7 @@ function validateHandler() {
 
 async function generatePassword() {
   try {
-    const response = await fetch('http://localhost:8080/generate', {
+    const response = await fetch('http://localhost:8080/', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -36,10 +36,10 @@ async function generatePassword() {
 
     const data = await response.json()
 
-    serverInput.value = data.password
-    hash.value = data.hash
-    password.value = data.password
-    match.value = data.match
+    serverInput.value = data.Password
+    hash.value = data.Hash
+    password.value = data.Password
+    match.value = data.Match
 
     isPasswordGenerated.value = true
   } catch (error) {
